@@ -1,23 +1,25 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Obtener todos los clientes
+// Get all customers
 const getAllCustomers = async (req, res) => {
     try {
         const customers = await prisma.customer.findMany({
             include: {
                 _count: {
-                    select: { sales: true }
+                    select: {
+                        sales: true
+                    }
                 }
             }
         });
         res.json(customers);
     } catch (error) {
-        res.status(500).json({ error: 'Error al obtener los clientes' });
+        res.status(500).json({ error: 'Error getting customers' });
     }
 };
 
-// Obtener un cliente por ID
+// Get customer by ID
 const getCustomerById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -37,27 +39,27 @@ const getCustomerById = async (req, res) => {
         });
 
         if (!customer) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
+            return res.status(404).json({ error: 'Customer not found' });
         }
 
         res.json(customer);
     } catch (error) {
-        res.status(500).json({ error: 'Error al obtener el cliente' });
+        res.status(500).json({ error: 'Error getting customer' });
     }
 };
 
-// Crear un nuevo cliente
+// Create a new customer
 const createCustomer = async (req, res) => {
     try {
         const { name, email, phone, address } = req.body;
 
-        // Verificar si ya existe un cliente con el mismo email
-        const existingCustomer = await prisma.customer.findUnique({
+        // Check if customer with same email exists
+        const existingCustomer = await prisma.customer.findFirst({
             where: { email }
         });
 
         if (existingCustomer) {
-            return res.status(400).json({ error: 'Ya existe un cliente con ese email' });
+            return res.status(400).json({ error: 'Customer with this email already exists' });
         }
 
         const customer = await prisma.customer.create({
@@ -71,37 +73,40 @@ const createCustomer = async (req, res) => {
 
         res.status(201).json(customer);
     } catch (error) {
-        res.status(500).json({ error: 'Error al crear el cliente' });
+        res.status(500).json({ error: 'Error creating customer' });
     }
 };
 
-// Actualizar un cliente
+// Update a customer
 const updateCustomer = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, email, phone, address } = req.body;
 
-        // Verificar si el cliente existe
+        // Check if customer exists
         const existingCustomer = await prisma.customer.findUnique({
             where: { id }
         });
 
         if (!existingCustomer) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
+            return res.status(404).json({ error: 'Customer not found' });
         }
 
-        // Si se está cambiando el email, verificar que no exista otro con el mismo email
-        if (email && email !== existingCustomer.email) {
-            const duplicateCustomer = await prisma.customer.findUnique({
-                where: { email }
+        // Check if new email is already taken by another customer
+        if (email !== existingCustomer.email) {
+            const emailExists = await prisma.customer.findFirst({
+                where: {
+                    email,
+                    id: { not: id }
+                }
             });
 
-            if (duplicateCustomer) {
-                return res.status(400).json({ error: 'Ya existe un cliente con ese email' });
+            if (emailExists) {
+                return res.status(400).json({ error: 'Customer with this email already exists' });
             }
         }
 
-        const updatedCustomer = await prisma.customer.update({
+        const customer = await prisma.customer.update({
             where: { id },
             data: {
                 name,
@@ -111,84 +116,92 @@ const updateCustomer = async (req, res) => {
             }
         });
 
-        res.json(updatedCustomer);
+        res.json(customer);
     } catch (error) {
-        res.status(500).json({ error: 'Error al actualizar el cliente' });
+        res.status(500).json({ error: 'Error updating customer' });
     }
 };
 
-// Eliminar un cliente
+// Delete a customer
 const deleteCustomer = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Verificar si el cliente tiene ventas asociadas
-        const customerWithSales = await prisma.customer.findUnique({
-            where: { id },
-            include: {
-                _count: {
-                    select: { sales: true }
-                }
-            }
-        });
-
-        if (!customerWithSales) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
-        }
-
-        if (customerWithSales._count.sales > 0) {
-            return res.status(400).json({ 
-                error: 'No se puede eliminar el cliente porque tiene ventas asociadas' 
-            });
-        }
-
-        await prisma.customer.delete({
-            where: { id }
-        });
-
-        res.json({ message: 'Cliente eliminado correctamente' });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar el cliente' });
-    }
-};
-
-// Obtener el historial de compras de un cliente
-const getCustomerPurchaseHistory = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { startDate, endDate } = req.query;
-
+        // Check if customer exists and has no associated sales
         const customer = await prisma.customer.findUnique({
             where: { id },
             include: {
-                sales: {
-                    where: {
-                        date: {
-                            gte: startDate ? new Date(startDate) : undefined,
-                            lte: endDate ? new Date(endDate) : undefined
-                        }
-                    },
-                    include: {
-                        items: {
-                            include: {
-                                product: true
-                            }
-                        }
-                    },
-                    orderBy: {
-                        date: 'desc'
+                _count: {
+                    select: {
+                        sales: true
                     }
                 }
             }
         });
 
         if (!customer) {
-            return res.status(404).json({ error: 'Cliente no encontrado' });
+            return res.status(404).json({ error: 'Customer not found' });
         }
 
-        res.json(customer.sales);
+        if (customer._count.sales > 0) {
+            return res.status(400).json({ error: 'Cannot delete customer with associated sales' });
+        }
+
+        await prisma.customer.delete({
+            where: { id }
+        });
+
+        res.json({ message: 'Customer deleted successfully' });
     } catch (error) {
-        res.status(500).json({ error: 'Error al obtener el historial de compras' });
+        res.status(500).json({ error: 'Error deleting customer' });
+    }
+};
+
+// Get customer purchase history
+const getCustomerPurchaseHistory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { startDate, endDate } = req.query;
+
+        // Check if customer exists
+        const customer = await prisma.customer.findUnique({
+            where: { id }
+        });
+
+        if (!customer) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
+
+        // Build date filter
+        const dateFilter = {};
+        if (startDate) {
+            dateFilter.gte = new Date(startDate);
+        }
+        if (endDate) {
+            dateFilter.lte = new Date(endDate);
+        }
+
+        // Get sales with date filter
+        const sales = await prisma.sale.findMany({
+            where: {
+                customerId: id,
+                ...(Object.keys(dateFilter).length > 0 && { date: dateFilter })
+            },
+            include: {
+                items: {
+                    include: {
+                        product: true
+                    }
+                }
+            },
+            orderBy: {
+                date: 'desc'
+            }
+        });
+
+        res.json(sales);
+    } catch (error) {
+        res.status(500).json({ error: 'Error getting customer purchase history' });
     }
 };
 

@@ -1,93 +1,198 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { createNotification } = require('./notification.controller');
 
-// Obtener todos los productos
+// Get all products
 const getAllProducts = async (req, res) => {
-  try {
-    const products = await prisma.product.findMany();
-    res.json(products);
-  } catch (error) {
-    console.error('Error getting products:', error);
-    res.status(500).json({ error: 'Error getting products' });
-  }
+    try {
+        const products = await prisma.product.findMany({
+            include: {
+                category: true,
+                supplier: true
+            }
+        });
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ error: 'Error getting products' });
+    }
 };
 
-// Obtener un producto por ID
+// Get product by ID
 const getProductById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+    try {
+        const { id } = req.params;
+        const product = await prisma.product.findUnique({
+            where: { id },
+            include: {
+                category: true,
+                supplier: true
+            }
+        });
+
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({ error: 'Error getting product' });
     }
-    res.json(product);
-  } catch (error) {
-    console.error('Error getting product:', error);
-    res.status(500).json({ error: 'Error getting product' });
-  }
 };
 
-// Crear un nuevo producto
+// Create a new product
 const createProduct = async (req, res) => {
-  try {
-    const { name, description, price, stock, sku } = req.body;
-    if (!name || !description || !price || !stock || !sku) {
-      return res.status(400).json({ error: 'All fields are required' });
+    try {
+        const { name, description, price, stock, categoryId, supplierId } = req.body;
+        const userId = req.user.id;
+
+        // Validate category exists
+        if (categoryId) {
+            const category = await prisma.category.findUnique({
+                where: { id: categoryId }
+            });
+            if (!category) {
+                return res.status(404).json({ error: 'Category not found' });
+            }
+        }
+
+        // Validate supplier exists
+        if (supplierId) {
+            const supplier = await prisma.supplier.findUnique({
+                where: { id: supplierId }
+            });
+            if (!supplier) {
+                return res.status(404).json({ error: 'Supplier not found' });
+            }
+        }
+
+        const product = await prisma.product.create({
+            data: {
+                name,
+                description,
+                price,
+                stock,
+                categoryId,
+                supplierId
+            }
+        });
+
+        // Check if stock is low
+        if (stock < 10) {
+            await createNotification(
+                userId,
+                'STOCK_LOW',
+                `Low stock alert: ${name} has only ${stock} units left`
+            );
+        }
+
+        res.status(201).json(product);
+    } catch (error) {
+        res.status(500).json({ error: 'Error creating product' });
     }
-    const existing = await prisma.product.findUnique({ where: { sku } });
-    if (existing) {
-      return res.status(400).json({ error: 'SKU already exists' });
-    }
-    const product = await prisma.product.create({
-      data: { name, description, price: parseFloat(price), stock: parseInt(stock), sku }
-    });
-    res.status(201).json(product);
-  } catch (error) {
-    console.error('Error creating product:', error);
-    res.status(500).json({ error: 'Error creating product' });
-  }
 };
 
-// Actualizar un producto
+// Update a product
 const updateProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, price, stock, sku } = req.body;
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+    try {
+        const { id } = req.params;
+        const { name, description, price, stock, categoryId, supplierId } = req.body;
+        const userId = req.user.id;
+
+        // Check if product exists
+        const existingProduct = await prisma.product.findUnique({
+            where: { id }
+        });
+
+        if (!existingProduct) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        // Validate category exists
+        if (categoryId) {
+            const category = await prisma.category.findUnique({
+                where: { id: categoryId }
+            });
+            if (!category) {
+                return res.status(404).json({ error: 'Category not found' });
+            }
+        }
+
+        // Validate supplier exists
+        if (supplierId) {
+            const supplier = await prisma.supplier.findUnique({
+                where: { id: supplierId }
+            });
+            if (!supplier) {
+                return res.status(404).json({ error: 'Supplier not found' });
+            }
+        }
+
+        const product = await prisma.product.update({
+            where: { id },
+            data: {
+                name,
+                description,
+                price,
+                stock,
+                categoryId,
+                supplierId
+            }
+        });
+
+        // Check if stock is low
+        if (stock < 10) {
+            await createNotification(
+                userId,
+                'STOCK_LOW',
+                `Low stock alert: ${name} has only ${stock} units left`
+            );
+        }
+
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({ error: 'Error updating product' });
     }
-    const updated = await prisma.product.update({
-      where: { id },
-      data: { name, description, price, stock, sku }
-    });
-    res.json(updated);
-  } catch (error) {
-    console.error('Error updating product:', error);
-    res.status(500).json({ error: 'Error updating product' });
-  }
 };
 
-// Eliminar un producto
+// Delete a product
 const deleteProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+    try {
+        const { id } = req.params;
+
+        // Check if product exists and has no associated sales
+        const product = await prisma.product.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: {
+                        saleItems: true
+                    }
+                }
+            }
+        });
+
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+
+        if (product._count.saleItems > 0) {
+            return res.status(400).json({ error: 'Cannot delete product with associated sales' });
+        }
+
+        await prisma.product.delete({
+            where: { id }
+        });
+
+        res.json({ message: 'Product deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Error deleting product' });
     }
-    await prisma.product.delete({ where: { id } });
-    res.status(204).send();
-  } catch (error) {
-    console.error('Error deleting product:', error);
-    res.status(500).json({ error: 'Error deleting product' });
-  }
 };
 
 module.exports = {
-  getAllProducts,
-  getProductById,
-  createProduct,
-  updateProduct,
-  deleteProduct
+    getAllProducts,
+    getProductById,
+    createProduct,
+    updateProduct,
+    deleteProduct
 }; 

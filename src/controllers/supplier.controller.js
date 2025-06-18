@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Listar todos los proveedores
+// Get all suppliers
 const getAllSuppliers = async (req, res) => {
   try {
     const suppliers = await prisma.supplier.findMany({
@@ -18,7 +18,7 @@ const getAllSuppliers = async (req, res) => {
   }
 };
 
-// Obtener un proveedor por ID
+// Get supplier by ID
 const getSupplierById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -48,18 +48,18 @@ const getSupplierById = async (req, res) => {
   }
 };
 
-// Crear un nuevo proveedor
+// Create a new supplier
 const createSupplier = async (req, res) => {
   try {
     const { name, email, phone, address } = req.body;
 
-    // Validar email único
-    const existingSupplier = await prisma.supplier.findUnique({
+    // Check if supplier with same email exists
+    const existingSupplier = await prisma.supplier.findFirst({
       where: { email }
     });
 
     if (existingSupplier) {
-      return res.status(400).json({ error: 'Email already registered' });
+      return res.status(400).json({ error: 'Supplier with this email already exists' });
     }
 
     const supplier = await prisma.supplier.create({
@@ -78,13 +78,13 @@ const createSupplier = async (req, res) => {
   }
 };
 
-// Actualizar un proveedor
+// Update a supplier
 const updateSupplier = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, phone, address } = req.body;
 
-    // Verificar si el proveedor existe
+    // Check if supplier exists
     const existingSupplier = await prisma.supplier.findUnique({
       where: { id }
     });
@@ -93,14 +93,17 @@ const updateSupplier = async (req, res) => {
       return res.status(404).json({ error: 'Supplier not found' });
     }
 
-    // Si se está actualizando el email, verificar que no esté en uso
-    if (email && email !== existingSupplier.email) {
-      const emailExists = await prisma.supplier.findUnique({
-        where: { email }
+    // Check if new email is already taken by another supplier
+    if (email !== existingSupplier.email) {
+      const emailExists = await prisma.supplier.findFirst({
+        where: {
+          email,
+          id: { not: id }
+        }
       });
 
       if (emailExists) {
-        return res.status(400).json({ error: 'Email already registered' });
+        return res.status(400).json({ error: 'Supplier with this email already exists' });
       }
     }
 
@@ -121,12 +124,12 @@ const updateSupplier = async (req, res) => {
   }
 };
 
-// Eliminar un proveedor
+// Delete a supplier
 const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verificar si el proveedor tiene productos asociados
+    // Check if supplier exists and has no associated products
     const supplier = await prisma.supplier.findUnique({
       where: { id },
       include: {
@@ -141,16 +144,14 @@ const deleteSupplier = async (req, res) => {
     }
 
     if (supplier._count.products > 0) {
-      return res.status(400).json({ 
-        error: 'Cannot delete supplier with associated products' 
-      });
+      return res.status(400).json({ error: 'Cannot delete supplier with associated products' });
     }
 
     await prisma.supplier.delete({
       where: { id }
     });
 
-    res.status(204).send();
+    res.json({ message: 'Supplier deleted successfully' });
   } catch (error) {
     console.error('Error deleting supplier:', error);
     res.status(500).json({ error: 'Error deleting supplier' });

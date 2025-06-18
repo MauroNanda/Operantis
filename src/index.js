@@ -17,6 +17,7 @@ const reportRoutes = require('./routes/report.routes');
 const supplierRoutes = require('./routes/supplier.routes');
 const categoryRoutes = require('./routes/category.routes');
 const customerRoutes = require('./routes/customer.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

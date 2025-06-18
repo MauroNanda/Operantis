@@ -1,23 +1,25 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Obtener todas las categorías
+// Get all categories
 const getAllCategories = async (req, res) => {
     try {
         const categories = await prisma.category.findMany({
             include: {
                 _count: {
-                    select: { products: true }
+                    select: {
+                        products: true
+                    }
                 }
             }
         });
         res.json(categories);
     } catch (error) {
-        res.status(500).json({ error: 'Error al obtener las categorías' });
+        res.status(500).json({ error: 'Error getting categories' });
     }
 };
 
-// Obtener una categoría por ID
+// Get category by ID
 const getCategoryById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -29,27 +31,27 @@ const getCategoryById = async (req, res) => {
         });
 
         if (!category) {
-            return res.status(404).json({ error: 'Categoría no encontrada' });
+            return res.status(404).json({ error: 'Category not found' });
         }
 
         res.json(category);
     } catch (error) {
-        res.status(500).json({ error: 'Error al obtener la categoría' });
+        res.status(500).json({ error: 'Error getting category' });
     }
 };
 
-// Crear una nueva categoría
+// Create a new category
 const createCategory = async (req, res) => {
     try {
         const { name, description } = req.body;
 
-        // Verificar si ya existe una categoría con el mismo nombre
-        const existingCategory = await prisma.category.findUnique({
+        // Check if category with same name exists
+        const existingCategory = await prisma.category.findFirst({
             where: { name }
         });
 
         if (existingCategory) {
-            return res.status(400).json({ error: 'Ya existe una categoría con ese nombre' });
+            return res.status(400).json({ error: 'Category with this name already exists' });
         }
 
         const category = await prisma.category.create({
@@ -61,37 +63,40 @@ const createCategory = async (req, res) => {
 
         res.status(201).json(category);
     } catch (error) {
-        res.status(500).json({ error: 'Error al crear la categoría' });
+        res.status(500).json({ error: 'Error creating category' });
     }
 };
 
-// Actualizar una categoría
+// Update a category
 const updateCategory = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, description } = req.body;
 
-        // Verificar si la categoría existe
+        // Check if category exists
         const existingCategory = await prisma.category.findUnique({
             where: { id }
         });
 
         if (!existingCategory) {
-            return res.status(404).json({ error: 'Categoría no encontrada' });
+            return res.status(404).json({ error: 'Category not found' });
         }
 
-        // Si se está cambiando el nombre, verificar que no exista otro con el mismo nombre
-        if (name && name !== existingCategory.name) {
-            const duplicateCategory = await prisma.category.findUnique({
-                where: { name }
+        // Check if new name is already taken by another category
+        if (name !== existingCategory.name) {
+            const nameExists = await prisma.category.findFirst({
+                where: {
+                    name,
+                    id: { not: id }
+                }
             });
 
-            if (duplicateCategory) {
-                return res.status(400).json({ error: 'Ya existe una categoría con ese nombre' });
+            if (nameExists) {
+                return res.status(400).json({ error: 'Category with this name already exists' });
             }
         }
 
-        const updatedCategory = await prisma.category.update({
+        const category = await prisma.category.update({
             where: { id },
             data: {
                 name,
@@ -99,44 +104,44 @@ const updateCategory = async (req, res) => {
             }
         });
 
-        res.json(updatedCategory);
+        res.json(category);
     } catch (error) {
-        res.status(500).json({ error: 'Error al actualizar la categoría' });
+        res.status(500).json({ error: 'Error updating category' });
     }
 };
 
-// Eliminar una categoría
+// Delete a category
 const deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Verificar si la categoría tiene productos asociados
-        const categoryWithProducts = await prisma.category.findUnique({
+        // Check if category exists and has no associated products
+        const category = await prisma.category.findUnique({
             where: { id },
             include: {
                 _count: {
-                    select: { products: true }
+                    select: {
+                        products: true
+                    }
                 }
             }
         });
 
-        if (!categoryWithProducts) {
-            return res.status(404).json({ error: 'Categoría no encontrada' });
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
         }
 
-        if (categoryWithProducts._count.products > 0) {
-            return res.status(400).json({ 
-                error: 'No se puede eliminar la categoría porque tiene productos asociados' 
-            });
+        if (category._count.products > 0) {
+            return res.status(400).json({ error: 'Cannot delete category with associated products' });
         }
 
         await prisma.category.delete({
             where: { id }
         });
 
-        res.json({ message: 'Categoría eliminada correctamente' });
+        res.json({ message: 'Category deleted successfully' });
     } catch (error) {
-        res.status(500).json({ error: 'Error al eliminar la categoría' });
+        res.status(500).json({ error: 'Error deleting category' });
     }
 };
 
