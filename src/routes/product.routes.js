@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/product.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
+const { validateProduct } = require('../middleware/productValidator');
 
 /**
  * @swagger
@@ -78,7 +79,7 @@ router.get('/:id', authenticateToken, productController.getProductById);
  *       400:
  *         description: Invalid input
  */
-router.post('/', authenticateToken, productController.createProduct);
+router.post('/', authenticateToken, validateProduct, productController.createProduct);
 
 /**
  * @swagger
@@ -118,7 +119,7 @@ router.post('/', authenticateToken, productController.createProduct);
  *       404:
  *         description: Product not found
  */
-router.put('/:id', authenticateToken, productController.updateProduct);
+router.put('/:id', authenticateToken, validateProduct, productController.updateProduct);
 
 /**
  * @swagger

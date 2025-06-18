@@ -9,6 +9,7 @@ const swaggerUi = require('swagger-ui-express');
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const healthRoutes = require('./routes/health.routes');
+const productRoutes = require('./routes/product.routes');
 
 const app = express();
 
@@ -37,6 +38,20 @@ const swaggerOptions = {
         description: 'Development server',
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
   apis: ['./src/routes/*.js'],
 };
@@ -47,6 +62,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/products', productRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
