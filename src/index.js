@@ -10,6 +10,7 @@ const swaggerUi = require('swagger-ui-express');
 const authRoutes = require('./routes/auth.routes');
 const healthRoutes = require('./routes/health.routes');
 const productRoutes = require('./routes/product.routes');
+const userRoutes = require('./routes/user.routes');
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
