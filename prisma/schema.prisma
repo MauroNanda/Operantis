@@ -11,28 +11,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
+  id            String         @id @default(uuid())
+  email         String         @unique
   password      String
   firstName     String
   lastName      String
-  role          UserRole  @default(USER)
-  roleId        String?
-  roleRelation  Role?     @relation(fields: [roleId], references: [id])
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  refreshTokens RefreshToken[]
+  role          String         // Mantenemos la columna role existente
+  roleId        String?        // Hacemos opcional el roleId
+  roleRelation  Role?          @relation(fields: [roleId], references: [id])
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   sales         Sale[]
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  refreshTokens RefreshToken[]
 }
 
 model Role {
@@ -43,41 +34,93 @@ model Role {
   updatedAt DateTime @updatedAt
 }
 
-model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String
-  price       Float
-  stock       Int
-  sku         String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  saleItems   SaleItem[]
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
-model Sale {
+model Product {
   id          String      @id @default(uuid())
-  date        DateTime    @default(now())
-  total       Float
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  price       Float
+  stock       Int
+  sku         String      @unique
+  categoryId  String?
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  supplierId  String?
+  supplier    Supplier?   @relation(fields: [supplierId], references: [id])
   items       SaleItem[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }
 
-model SaleItem {
-  id         String   @id @default(uuid())
-  saleId     String
-  sale       Sale     @relation(fields: [saleId], references: [id])
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id])
-  quantity   Int
-  unitPrice  Float
+model Sale {
+  id        String     @id @default(uuid())
+  date      DateTime   @default(now())
+  total     Float
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  items     SaleItem[]
+  customerId String?
+  customer  Customer?  @relation(fields: [customerId], references: [id])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  USER
+model SaleItem {
+  id        String   @id @default(uuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) // Agregamos valor por defecto
+}
+
+model Supplier {
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  phone       String?
+  address     String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Customer {
+  id          String    @id @default(uuid())
+  name        String
+  email       String    @unique
+  phone       String?
+  address     String?
+  sales       Sale[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  type        String    // 'STOCK_LOW', 'SALE', 'SYSTEM', etc.
+  message     String
+  isRead      Boolean   @default(false)
+  userId      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 } 

@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const swaggerJsDoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger.json');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -12,6 +13,10 @@ const healthRoutes = require('./routes/health.routes');
 const productRoutes = require('./routes/product.routes');
 const userRoutes = require('./routes/user.routes');
 const saleRoutes = require('./routes/sale.routes');
+const reportRoutes = require('./routes/report.routes');
+const supplierRoutes = require('./routes/supplier.routes');
+const categoryRoutes = require('./routes/category.routes');
+const customerRoutes = require('./routes/customer.routes');
 
 const app = express();
 
@@ -67,6 +72,10 @@ app.use('/api/health', healthRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sales', saleRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/customers', customerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
