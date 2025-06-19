@@ -60,16 +60,22 @@ model Product {
 }
 
 model Sale {
-  id        String     @id @default(uuid())
-  date      DateTime   @default(now())
-  total     Float
-  userId    String
-  user      User       @relation(fields: [userId], references: [id])
-  items     SaleItem[]
-  customerId String?
-  customer  Customer?  @relation(fields: [customerId], references: [id])
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id          String     @id @default(uuid())
+  date        DateTime   @default(now())
+  total       Float
+  subtotal    Float      // Total before discounts
+  discount    Float      @default(0)
+  userId      String
+  customerId  String
+  discountId  String?    // Optional discount applied
+  promotionId String?    // Optional promotion applied
+  user        User       @relation(fields: [userId], references: [id])
+  customer    Customer   @relation(fields: [customerId], references: [id])
+  items       SaleItem[]
+  discountRelation Discount?  @relation(fields: [discountId], references: [id])
+  promotion   Promotion? @relation(fields: [promotionId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model SaleItem {
@@ -123,4 +129,36 @@ model Notification {
   userId      String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+// Discount model
+model Discount {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  type        String   // PERCENTAGE or FIXED_AMOUNT
+  value       Float    // Percentage or fixed amount
+  minPurchase Float?   // Minimum purchase amount to apply discount
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  maxUses     Int?     // Maximum number of times the discount can be used
+  usedCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sales       Sale[]   // Sales where this discount was applied
+}
+
+// Promotion model
+model Promotion {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  type        String   // BUY_X_GET_Y, BUNDLE, FLAT_RATE
+  conditions  Json     // Conditions for the promotion (e.g., buy 2 get 1 free)
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sales       Sale[]   // Sales where this promotion was applied
 } 

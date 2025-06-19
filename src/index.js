@@ -18,6 +18,8 @@ const supplierRoutes = require('./routes/supplier.routes');
 const categoryRoutes = require('./routes/category.routes');
 const customerRoutes = require('./routes/customer.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const discountRoutes = require('./routes/discount.routes');
+const promotionRoutes = require('./routes/promotion.routes');
 
 const app = express();
 
@@ -78,6 +80,8 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/discounts', discountRoutes);
+app.use('/api/promotions', promotionRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
